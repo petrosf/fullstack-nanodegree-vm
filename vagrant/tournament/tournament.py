@@ -7,71 +7,156 @@ import psycopg2
 
 
 def connect():
-    """Connect to the PostgreSQL database.  Returns a database connection."""
-    return psycopg2.connect("dbname=tournament")
-
+	"""Connect to the PostgreSQL database.  Returns a database connection."""
+	return psycopg2.connect("dbname=tournament")
 
 def deleteMatches():
-    """Remove all the match records from the database."""
+	"""Remove all the match records from the database."""
+	DB = connect()
+	cur = DB.cursor()
+
+	cur.execute("DELETE FROM results;")
+	cur.execute("DELETE FROM matches;")
+
+	DB.commit()
+	DB.close()
 
 
 def deletePlayers():
-    """Remove all the player records from the database."""
+	"""Remove all the player records from the database."""
+	DB = connect()
+	cur = DB.cursor()
+
+	cur.execute("DELETE FROM players;")
+
+	DB.commit()
+	DB.close()
 
 
 def countPlayers():
-    """Returns the number of players currently registered."""
+	"""Returns the number of players currently registered."""
+	DB = connect()
+	cur = DB.cursor()
+
+	cur.execute("SELECT count(*) FROM players;")
+
+	nPlayers = cur.fetchall()[0][0]
+
+	DB.close()
+
+	return nPlayers
 
 
 def registerPlayer(name):
-    """Adds a player to the tournament database.
-  
-    The database assigns a unique serial id number for the player.  (This
-    should be handled by your SQL database schema, not in your Python code.)
-  
-    Args:
-      name: the player's full name (need not be unique).
-    """
+	"""Adds a player to the tournament database.
 
+	Args:
+	  name: the player's full name (need not be unique).
+	"""
+	DB = connect()
+	cur = DB.cursor()
+
+	cur.execute("INSERT INTO players(name) VALUES (%s);", (name,))
+
+	DB.commit()
+	DB.close() 
 
 def playerStandings():
-    """Returns a list of the players and their win records, sorted by wins.
+	"""Returns a list of the players and their win records, sorted by wins.
 
-    The first entry in the list should be the player in first place, or a player
-    tied for first place if there is currently a tie.
+	The first entry in the list should be the player in first place, or a player
+	tied for first place if there is currently a tie.
 
-    Returns:
-      A list of tuples, each of which contains (id, name, wins, matches):
-        id: the player's unique id (assigned by the database)
-        name: the player's full name (as registered)
-        wins: the number of matches the player has won
-        matches: the number of matches the player has played
-    """
+	Returns:
+	  A list of tuples, each of which contains (id, name, wins, matches):
+	    id: the player's unique id (assigned by the database)
+	    name: the player's full name (as registered)
+	    wins: the number of matches the player has won
+	    matches: the number of matches the player has played
+	"""
+	DB = connect()
+	cur = DB.cursor()
+
+	#Using scalar subqueries
+	cur.execute("SELECT id, name, COALESCE((SELECT sum(score) FROM results WHERE results.player=players.ID),0) as score, (SELECT count(match) FROM results WHERE results.player=players.ID AND match IS NOT NULL) as matches FROM players ORDER BY score DESC;")
+
+	posts = [(int(row[0]),str(row[1]),int(row[2]),int(row[3])) for row in cur.fetchall()]
+
+	DB.close() 
+	return posts
 
 
-def reportMatch(winner, loser):
-    """Records the outcome of a single match between two players.
+def reportMatch(player1, player2, result):
+	"""Records the outcome of a single match between two players.
 
-    Args:
-      winner:  the id number of the player who won
-      loser:  the id number of the player who lost
-    """
- 
- 
+	Args:
+	  player1 & player2:  the id number of the player2
+	  result:  0=draw, 1=player1 won, 2=player2 won
+	  round: int number
+	"""
+
+	DB = connect()
+	cur = DB.cursor()
+
+	#Add match details and get match ID (NOTE: round feature not implemented here)
+	cur.execute("INSERT INTO matches(round) VALUES (1) RETURNING id")
+	matchid = cur.fetchall()[0][0]
+
+	#Add results into table
+	if result==0:
+		scoreP1 = 1
+		scoreP2 = 1
+	elif result==1:
+		scoreP1 = 3
+		scoreP2 = 0
+	elif result==2:
+		scoreP1 = 0
+		scoreP2 = 3
+
+	cur.execute("INSERT INTO results(match,player,score) VALUES (%s,%s,%s)", (matchid, player1, scoreP1))
+	cur.execute("INSERT INTO results(match,player,score) VALUES (%s,%s,%s)", (matchid, player2, scoreP2))
+
+	DB.commit()
+	DB.close() 
+
+
 def swissPairings():
-    """Returns a list of pairs of players for the next round of a match.
-  
-    Assuming that there are an even number of players registered, each player
-    appears exactly once in the pairings.  Each player is paired with another
-    player with an equal or nearly-equal win record, that is, a player adjacent
-    to him or her in the standings.
-  
-    Returns:
-      A list of tuples, each of which contains (id1, name1, id2, name2)
-        id1: the first player's unique id
-        name1: the first player's name
-        id2: the second player's unique id
-        name2: the second player's name
-    """
+	"""Returns a list of pairs of players for the next round of a match.
 
+	Assuming that there are an even number of players registered, each player
+	appears exactly once in the pairings.  Each player is paired with another
+	player with an equal or nearly-equal win record, that is, a player adjacent
+	to him or her in the standings.
+
+	Returns:
+	  A list of tuples, each of which contains (id1, name1, id2, name2)
+	    id1: the first player's unique id
+	    name1: the first player's name
+	    id2: the second player's unique id
+	    name2: the second player's name
+	"""
+
+	#get current standings sorted from most to least wins
+	standings = playerStandings()
+	print standings
+
+	pairings = [] #output pairings
+	curr_pair = [] #used to gather each pair
+
+	for player in standings:
+		#add each player to the current pairing.
+		curr_pair.extend([player[0],player[1]])
+		#when the curr_pair has two players pass contents to the pairings and clear
+		if len(curr_pair)==4:
+			pairings.append(curr_pair)
+			curr_pair=[]
+
+	#if odd players curr_pair will contain final player
+	DB = connect()
+	cur = DB.cursor()
+	cur.execute("INSERT INTO results(match,player,score) VALUES (NULL,%s,%s)", (curr_pair[0], 3))
+	DB.commit()
+	DB.close() 
+
+	return pairings
 
