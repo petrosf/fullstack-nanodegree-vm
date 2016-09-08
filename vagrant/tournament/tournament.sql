@@ -20,3 +20,29 @@ winner int REFERENCES player(id),
 loser int REFERENCES player(id),
 isDraw boolean DEFAULT false
 );
+
+CREATE VIEW matchesPlayed AS
+SELECT player.id as id, player.name as name, count(match.id) as nMatches
+FROM player LEFT JOIN match
+ON (player.id = match.winner OR player.id = match.loser)
+GROUP BY player.id 
+;
+
+CREATE VIEW matchesWon AS
+SELECT player.id as id, player.name as name, count(match.id) as nWins
+FROM player LEFT JOIN match
+ON (match.winner=player.id AND match.isDraw=false)
+GROUP BY player.id 
+;
+
+CREATE VIEW matchesTied AS
+SELECT id, name,
+(SELECT count(id) FROM match WHERE (match.winner=player.id OR match.loser=player.id) AND match.isDraw=true) as tiePoints 
+FROM player
+;
+
+CREATE VIEW standing AS
+SELECT player.id, player.name, (matchesWon.nWins+0.5*matchesTied.tiePoints) as nWins, matchesPlayed.nMatches
+FROM player, matchesPlayed, matchesWon, matchesTied
+WHERE (player.id = matchesPlayed.id AND player.id = matchesWon.id AND player.id = matchesTied.id)
+;
