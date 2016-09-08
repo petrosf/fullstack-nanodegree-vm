@@ -21,6 +21,11 @@ loser int REFERENCES player(id),
 isDraw boolean DEFAULT false
 );
 
+CREATE TABLE bye (
+id serial PRIMARY KEY,
+player int REFERENCES player(id)
+);
+
 CREATE VIEW matchesPlayed AS
 SELECT player.id as id, player.name as name, count(match.id) as nMatches
 FROM player LEFT JOIN match
@@ -41,9 +46,16 @@ SELECT id, name,
 FROM player
 ;
 
+CREATE VIEW matchesBye AS
+SELECT player.id as id, player.name as name, count(bye.id) as nByes
+FROM player LEFT JOIN bye
+ON (bye.player=player.id)
+GROUP BY player.id 
+;
+
 CREATE VIEW standing AS
-SELECT player.id, player.name, (matchesWon.nWins+0.5*matchesTied.tiePoints) as nWins, matchesPlayed.nMatches
-FROM player, matchesPlayed, matchesWon, matchesTied
-WHERE (player.id = matchesPlayed.id AND player.id = matchesWon.id AND player.id = matchesTied.id)
+SELECT player.id, player.name, (matchesWon.nWins + 0.5*matchesTied.tiePoints + matchesBye.nByes) as nWins, matchesPlayed.nMatches
+FROM player, matchesPlayed, matchesWon, matchesTied, matchesBye
+WHERE (player.id = matchesPlayed.id AND player.id = matchesWon.id AND player.id = matchesTied.id AND player.id = matchesBye.id)
 ORDER BY nWins DESC
 ;

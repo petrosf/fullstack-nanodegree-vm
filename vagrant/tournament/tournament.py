@@ -134,13 +134,14 @@ def swissPairings():
 			pairings.append(curr_pair)
 			curr_pair=[]
 
-	'''
+	
 	#if odd players curr_pair will contain final player
-	DB = connect()
-	cur = DB.cursor()
-	cur.execute("INSERT INTO match(match,player,score) VALUES (NULL,%s,%s)", (curr_pair[0], 3))
-	DB.commit()
-	DB.close() 
-	'''
+	if len(curr_pair)>0:
+		DB = connect()
+		cur = DB.cursor()
+		cur.execute("INSERT INTO bye(player) VALUES (%s)", (curr_pair[0],))
+		DB.commit()
+		DB.close() 
+	
 	return pairings
 
