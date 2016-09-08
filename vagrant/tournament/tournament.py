@@ -15,8 +15,7 @@ def deleteMatches():
 	DB = connect()
 	cur = DB.cursor()
 
-	cur.execute("DELETE FROM results;")
-	cur.execute("DELETE FROM matches;")
+	cur.execute("DELETE FROM match;")
 
 	DB.commit()
 	DB.close()
@@ -27,7 +26,7 @@ def deletePlayers():
 	DB = connect()
 	cur = DB.cursor()
 
-	cur.execute("DELETE FROM players;")
+	cur.execute("DELETE FROM player;")
 
 	DB.commit()
 	DB.close()
@@ -38,7 +37,7 @@ def countPlayers():
 	DB = connect()
 	cur = DB.cursor()
 
-	cur.execute("SELECT count(*) FROM players;")
+	cur.execute("SELECT count(*) FROM player;")
 
 	nPlayers = cur.fetchall()[0][0]
 
@@ -56,7 +55,7 @@ def registerPlayer(name):
 	DB = connect()
 	cur = DB.cursor()
 
-	cur.execute("INSERT INTO players(name) VALUES (%s);", (name,))
+	cur.execute("INSERT INTO player(name) VALUES (%s);", (name,))
 
 	DB.commit()
 	DB.close() 
@@ -78,7 +77,7 @@ def playerStandings():
 	cur = DB.cursor()
 
 	#Using scalar subqueries
-	cur.execute("SELECT id, name, COALESCE((SELECT sum(score) FROM results WHERE results.player=players.ID),0) as score, (SELECT count(match) FROM results WHERE results.player=players.ID AND match IS NOT NULL) as matches FROM players ORDER BY score DESC;")
+	cur.execute("SELECT * FROM standing;")
 
 	posts = [(int(row[0]),str(row[1]),int(row[2]),int(row[3])) for row in cur.fetchall()]
 
@@ -86,7 +85,7 @@ def playerStandings():
 	return posts
 
 
-def reportMatch(player1, player2, result):
+def reportMatch(winner, loser, draw='false'):
 	"""Records the outcome of a single match between two players.
 
 	Args:
@@ -98,23 +97,8 @@ def reportMatch(player1, player2, result):
 	DB = connect()
 	cur = DB.cursor()
 
-	#Add match details and get match ID (NOTE: round feature not implemented here)
-	cur.execute("INSERT INTO matches(round) VALUES (1) RETURNING id")
-	matchid = cur.fetchall()[0][0]
-
-	#Add results into table
-	if result==0:
-		scoreP1 = 1
-		scoreP2 = 1
-	elif result==1:
-		scoreP1 = 3
-		scoreP2 = 0
-	elif result==2:
-		scoreP1 = 0
-		scoreP2 = 3
-
-	cur.execute("INSERT INTO results(match,player,score) VALUES (%s,%s,%s)", (matchid, player1, scoreP1))
-	cur.execute("INSERT INTO results(match,player,score) VALUES (%s,%s,%s)", (matchid, player2, scoreP2))
+	
+	cur.execute("INSERT INTO match(winner,loser,isDraw) VALUES (%s,%s,%s)", (winner, loser, draw))
 
 	DB.commit()
 	DB.close() 
@@ -151,12 +135,13 @@ def swissPairings():
 			pairings.append(curr_pair)
 			curr_pair=[]
 
+	'''
 	#if odd players curr_pair will contain final player
 	DB = connect()
 	cur = DB.cursor()
-	cur.execute("INSERT INTO results(match,player,score) VALUES (NULL,%s,%s)", (curr_pair[0], 3))
+	cur.execute("INSERT INTO match(match,player,score) VALUES (NULL,%s,%s)", (curr_pair[0], 3))
 	DB.commit()
 	DB.close() 
-
+	'''
 	return pairings
 
