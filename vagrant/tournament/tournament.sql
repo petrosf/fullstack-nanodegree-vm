@@ -45,4 +45,5 @@ CREATE VIEW standing AS
 SELECT player.id, player.name, (matchesWon.nWins+0.5*matchesTied.tiePoints) as nWins, matchesPlayed.nMatches
 FROM player, matchesPlayed, matchesWon, matchesTied
 WHERE (player.id = matchesPlayed.id AND player.id = matchesWon.id AND player.id = matchesTied.id)
+ORDER BY nWins DESC
 ;
