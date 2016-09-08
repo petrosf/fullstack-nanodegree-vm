@@ -89,9 +89,9 @@ def reportMatch(winner, loser, draw='false'):
 	"""Records the outcome of a single match between two players.
 
 	Args:
-	  player1 & player2:  the id number of the player2
-	  result:  0=draw, 1=player1 won, 2=player2 won
-	  round: int number
+      winner:  the id number of the player who won
+      loser:  the id number of the player who lost
+	  draw:  true if a draw
 	"""
 
 	DB = connect()
@@ -122,7 +122,6 @@ def swissPairings():
 
 	#get current standings sorted from most to least wins
 	standings = playerStandings()
-	print standings
 
 	pairings = [] #output pairings
 	curr_pair = [] #used to gather each pair
