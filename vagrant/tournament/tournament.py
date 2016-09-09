@@ -42,7 +42,8 @@ def countPlayers():
 
 	cur.execute("SELECT count(*) FROM player;")
 
-	nPlayers = cur.fetchall()[0][0]
+	nPlayers = cur.fetchone()[0]
+	print nPlayers
 
 	DB.close()
 
@@ -77,7 +78,7 @@ def playerStandings():
 	"""
 	DB,cur = connect()
 
-	#Using scalar subqueries
+	#use standing view
 	cur.execute("SELECT * FROM standing;")
 
 	posts = [(int(row[0]),str(row[1]),int(row[2]),int(row[3])) for row in cur.fetchall()]
