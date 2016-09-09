@@ -6,14 +6,19 @@
 import psycopg2
 
 
-def connect():
-	"""Connect to the PostgreSQL database.  Returns a database connection."""
-	return psycopg2.connect("dbname=tournament")
+
+def connect(database_name="tournament"):
+    """Connect to the PostgreSQL database.  Returns a database connection."""
+    try:
+        db = psycopg2.connect("dbname={}".format(database_name))
+        cursor = db.cursor()
+        return db, cursor
+    except:
+        print("<error message>")
 
 def deleteMatches():
 	"""Remove all the match records from the database."""
-	DB = connect()
-	cur = DB.cursor()
+	DB,cur = connect()
 
 	cur.execute("DELETE FROM match;")
 
@@ -23,8 +28,7 @@ def deleteMatches():
 
 def deletePlayers():
 	"""Remove all the player records from the database."""
-	DB = connect()
-	cur = DB.cursor()
+	DB,cur = connect()
 
 	cur.execute("DELETE FROM player;")
 
@@ -34,8 +38,7 @@ def deletePlayers():
 
 def countPlayers():
 	"""Returns the number of players currently registered."""
-	DB = connect()
-	cur = DB.cursor()
+	DB,cur = connect()
 
 	cur.execute("SELECT count(*) FROM player;")
 
@@ -52,8 +55,7 @@ def registerPlayer(name):
 	Args:
 	  name: the player's full name (need not be unique).
 	"""
-	DB = connect()
-	cur = DB.cursor()
+	DB,cur = connect()
 
 	cur.execute("INSERT INTO player(name) VALUES (%s);", (name,))
 
@@ -73,8 +75,7 @@ def playerStandings():
 	    wins: the number of matches the player has won
 	    matches: the number of matches the player has played
 	"""
-	DB = connect()
-	cur = DB.cursor()
+	DB,cur = connect()
 
 	#Using scalar subqueries
 	cur.execute("SELECT * FROM standing;")
@@ -94,8 +95,7 @@ def reportMatch(winner, loser, draw='false'):
 	  draw:  true if a draw
 	"""
 
-	DB = connect()
-	cur = DB.cursor()
+	DB,cur = connect()
 
 	
 	cur.execute("INSERT INTO match(winner,loser,isDraw) VALUES (%s,%s,%s)", (winner, loser, draw))
@@ -126,6 +126,7 @@ def swissPairings():
 	pairings = [] #output pairings
 	curr_pair = [] #used to gather each pair
 
+	
 	for player in standings:
 		#add each player to the current pairing.
 		curr_pair.extend([player[0],player[1]])
@@ -137,8 +138,7 @@ def swissPairings():
 	
 	#if odd players curr_pair will contain final player
 	if len(curr_pair)>0:
-		DB = connect()
-		cur = DB.cursor()
+		DB,cur = connect()
 		cur.execute("INSERT INTO bye(player) VALUES (%s)", (curr_pair[0],))
 		DB.commit()
 		DB.close() 
